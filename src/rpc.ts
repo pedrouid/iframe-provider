@@ -1,5 +1,5 @@
 import EventEmitter from 'eventemitter3';
-import { RequestParams, IRpcConnection } from 'basic-provider';
+import { RequestParams } from 'basic-provider';
 
 import { renderElement, payloadId } from './util';
 import { IframeOptions } from './types';
