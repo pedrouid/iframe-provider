@@ -1,26 +1,26 @@
-import BasicProvider from 'basic-provider';
+import JsonRpcProvider from '@json-rpc-tools/provider';
 
 import { IframeRpcConnection } from './rpc';
 import { IframeOptions } from './types';
 
-class IframeProvider extends BasicProvider {
+class IframeProvider extends JsonRpcProvider {
   constructor(opts: IframeOptions) {
-    super(new IframeRpcConnection(opts) as any);
+    super(new IframeRpcConnection(opts));
   }
 
-  get is3idProvider(): boolean {
+  get isIframeProvider(): boolean {
     return true;
   }
 
   public async enable(): Promise<any> {
     try {
-      if (!this.connected) {
-        await this.open();
+      if (!this.connection.connected) {
+        await this.connect();
       }
-      this.emit('enable');
+      this.events.emit('enable');
       return;
     } catch (err) {
-      await this.close();
+      await this.disconnect();
       throw err;
     }
   }

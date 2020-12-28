@@ -1,10 +1,12 @@
 import EventEmitter from 'eventemitter3';
-import { RequestParams } from 'basic-provider';
+import { IJsonRpcConnection, JsonRpcPayload } from '@json-rpc-tools/utils';
 
-import { renderElement, payloadId } from './util';
+import { renderElement } from './util';
 import { IframeOptions } from './types';
 
-export class IframeRpcConnection extends EventEmitter<string> {
+export class IframeRpcConnection extends IJsonRpcConnection {
+  public events: any = new EventEmitter();
+
   public iframe: HTMLIFrameElement | undefined;
   public opts: IframeOptions;
 
@@ -22,7 +24,19 @@ export class IframeRpcConnection extends EventEmitter<string> {
     );
   }
 
-  public send(payload: RequestParams): Promise<any> {
+  public on(event: string, listener: any): void {
+    this.events.on(event, listener);
+  }
+
+  public once(event: string, listener: any): void {
+    this.events.once(event, listener);
+  }
+
+  public off(event: string, listener: any): void {
+    this.events.off(event, listener);
+  }
+
+  public send(payload: JsonRpcPayload): Promise<void> {
     return new Promise((resolve, reject) => {
       if (typeof this.iframe === 'undefined') {
         throw new Error('iframe is not rendered!');
@@ -30,26 +44,6 @@ export class IframeRpcConnection extends EventEmitter<string> {
       if (this.iframe.contentWindow === null) {
         throw new Error('iframe inner page not loaded!');
       }
-      const request = {
-        id: payloadId(),
-        jsonrpc: '2.0',
-        method: payload.method || '',
-        params: payload.params || {},
-      };
-      if (!request.method.trim()) {
-        throw new Error('Missing payload method or invalid');
-      }
-      this.on(`${request.id}`, response => {
-        if (response.result) {
-          resolve(response.result);
-        } else {
-          if (response.error.message) {
-            reject(new Error(response.error.message));
-          } else {
-            reject(new Error(`Failed request for method: ${request.method}`));
-          }
-        }
-      });
       this.iframe.contentWindow.postMessage(
         JSON.stringify(payload),
         this.iframe.src
@@ -60,8 +54,7 @@ export class IframeRpcConnection extends EventEmitter<string> {
   public render(): Promise<void> {
     return new Promise(resolve => {
       this.on('iframe-initialized', () => {
-        this.emit('connect');
-        this.emit('open');
+        this.events.emit('open');
         resolve();
       });
       this.iframe = renderElement(
@@ -84,10 +77,10 @@ export class IframeRpcConnection extends EventEmitter<string> {
       }
       if (e.data.startsWith('event:')) {
         const event = e.data.replace('event:', '');
-        this.emit(event);
+        this.events.emit(event);
       } else {
         const payload = JSON.parse(e.data);
-        this.emit(`${payload.id}`, payload);
+        this.events.emit(`'payload'`, payload);
       }
     }
   }
@@ -99,8 +92,7 @@ export class IframeRpcConnection extends EventEmitter<string> {
 
   public async close() {
     this.unsubscribe();
-    this.emit('disconnect');
-    this.emit('close');
+    this.events.emit('close');
   }
 
   public subscribe() {
